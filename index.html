@@ -1,0 +1,1096 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Common SQL traps, illustrated with diagrams and fixes, for data scientists and engineers.">
+<title>SQL Gotchas Illustrated</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+/* Layout: one 46rem reading column, like a course article; code in gradient frames, diagrams on hand-drawn cards. */
+:root {
+  --bg: #f7f8fa;
+  --fg: #1f2430;
+  --muted: #5a6170;
+  --rule: #e2e4ea;
+  --chip-bg: #eceef2;
+  --chip-fg: #2a2e38;
+  --callout-bg: #e5f1fb;
+  --callout-line: #c9e0f2;
+  --accent: #6b47a3;
+  --accent-soft: #efe8f8;
+  --bad: #b8401a;
+  --bad-soft: #fbe9e2;
+  --good: #187a3c;
+  --good-soft: #e3f4e8;
+  --card: #ffffff;
+  --d-ink: #262a33;
+  --d-blue: #b5dbf7;
+  --d-purple: #ddd0f6;
+  --d-green: #c5ebcb;
+  --d-amber: #fde5a9;
+  --d-red: #d2452a;
+  --d-greenink: #1d8a43;
+  --frame: linear-gradient(135deg, #e697b5 0%, #a374c2 55%, #6a4aa1 100%);
+  --code-bg: #10131a;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --font-body: "Source Serif 4", Charter, Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-hand: "Kalam", "Comic Neue", "Chalkboard SE", cursive;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14151b; --fg: #e5e6eb; --muted: #a3a8b4; --rule: #2a2c36;
+    --chip-bg: #252733; --chip-fg: #e2e3ea; --callout-bg: #15283a; --callout-line: #24435e;
+    --accent: #c4a6f2; --accent-soft: #2b2240; --bad: #ff8a65; --bad-soft: #3a1f17;
+    --good: #6fd795; --good-soft: #15301f; --card: #1c1d26; --d-ink: #d9dbe3;
+    --d-blue: #1f3e59; --d-purple: #3a2d57; --d-green: #1d4a2c; --d-amber: #4d3c12;
+    --d-red: #ff7a5c; --d-greenink: #6fd795; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14151b; --fg: #e5e6eb; --muted: #a3a8b4; --rule: #2a2c36;
+  --chip-bg: #252733; --chip-fg: #e2e3ea; --callout-bg: #15283a; --callout-line: #24435e;
+  --accent: #c4a6f2; --accent-soft: #2b2240; --bad: #ff8a65; --bad-soft: #3a1f17;
+  --good: #6fd795; --good-soft: #15301f; --card: #1c1d26; --d-ink: #d9dbe3;
+  --d-blue: #1f3e59; --d-purple: #3a2d57; --d-green: #1d4a2c; --d-amber: #4d3c12;
+  --d-red: #ff7a5c; --d-greenink: #6fd795; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 1.125rem; line-height: 1.7;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 4rem;
+}
+main { max-width: 46rem; margin: 0 auto; }
+p { margin: 0; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+/* Hero */
+.hero { padding-block: 3.5rem 2rem; display: grid; gap: 1rem; }
+.eyebrow { font-family: var(--font-hand); font-size: 1.1rem; color: var(--accent); }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(2.4rem, 7vw, 3.6rem); line-height: 1.05; margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+h1 .squiggle { background: linear-gradient(transparent 62%, var(--d-amber) 62%); padding-inline: 0.1em; }
+.lede { font-size: 1.25rem; color: var(--muted); max-width: 38rem; }
+.toc { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; padding: 0; list-style: none; }
+.toc a { display: inline-block; font-family: var(--font-display); font-weight: 600; font-size: 0.9rem; text-decoration: none; color: var(--fg); background: var(--card); border: 1.5px solid var(--rule); border-radius: 999px; padding: 0.3rem 0.85rem; }
+.toc a:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Sections */
+section { padding-top: 2.5rem; display: flex; flex-direction: column; gap: 1.1rem; }
+section > h2 { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.7rem, 4.5vw, 2.2rem); line-height: 1.15; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+section > .kicker { font-family: var(--font-hand); color: var(--accent); font-size: 1.05rem; margin-bottom: -0.8rem; }
+h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.3rem; line-height: 1.25; margin: 1.2rem 0 0; text-wrap: balance; }
+hr.break { border: 0; border-top: 1.5px dashed var(--rule); margin: 2rem 0 0; }
+
+code { font-family: var(--font-mono); font-size: 0.82em; font-weight: 600; background: var(--chip-bg); color: var(--chip-fg); border: 1px solid var(--rule); border-radius: 6px; padding: 0.08em 0.38em; white-space: nowrap; }
+pre code, .sqlt code { all: unset; }
+
+ul.plain { margin: 0; padding-left: 1.3rem; display: grid; gap: 0.5rem; }
+ul.plain li::marker { color: var(--muted); }
+
+/* Callout */
+.callout { display: grid; grid-template-columns: auto 1fr; gap: 0.75rem; align-items: start; background: var(--callout-bg); border: 1px solid var(--callout-line); border-radius: 14px; padding: 1rem 1.2rem; }
+.callout .hand { font-size: 1.4rem; line-height: 1.5; }
+.callout p { min-width: 0; }
+
+/* Code frames */
+.code { margin: 0; background: var(--frame); border-radius: 16px; padding: 14px; min-width: 0; }
+.code-inner { background: var(--code-bg); border-radius: 10px; overflow: hidden; }
+.code-head { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.9rem 0; font-family: var(--font-mono); font-size: 0.78rem; color: #9aa3b2; }
+.code-head .label { flex: 1; min-width: 0; }
+.tag { font-family: var(--font-display); font-weight: 800; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 6px; padding: 0.12rem 0.5rem; }
+.tag.bad { background: #4a1d14; color: #ffb199; }
+.tag.good { background: #12391f; color: #8fe3aa; }
+.tag.note { background: #2c2347; color: #d6c3ff; }
+.copy { font-family: var(--font-mono); font-size: 0.72rem; color: #c7cfdb; background: transparent; border: 1px solid #343a47; border-radius: 6px; padding: 0.15rem 0.5rem; cursor: pointer; }
+.copy:hover { border-color: #8b93a3; }
+pre { margin: 0; padding: 0.7rem 0.95rem 0.9rem; overflow-x: auto; font-family: var(--font-mono); font-size: 0.86rem; line-height: 1.6; color: #e6edf3; tab-size: 2; }
+.tk-kw { color: #ff7b72; }
+.tk-fn { color: #d2a8ff; }
+.tk-str { color: #a5d6ff; }
+.tk-num { color: #79c0ff; }
+.tk-com { color: #8b949e; font-style: italic; }
+.tk-op { color: #ffa657; }
+
+/* Diagrams */
+.diagram { margin: 0; background: var(--frame); border-radius: 16px; padding: 14px; }
+.diagram-inner { background: var(--card); border-radius: 10px; padding: 0.75rem; overflow-x: auto; }
+.diagram svg { display: block; width: 100%; min-width: 34rem; height: auto; }
+.diagram figcaption { font-family: var(--font-hand); color: #fff; font-size: 1rem; padding: 0.55rem 0.3rem 0; text-align: center; }
+svg .ink { stroke: var(--d-ink); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+svg .box { stroke: var(--d-ink); stroke-width: 2; }
+svg .f-blue { fill: var(--d-blue); } svg .f-purple { fill: var(--d-purple); } svg .f-green { fill: var(--d-green); } svg .f-amber { fill: var(--d-amber); } svg .f-card { fill: var(--card); }
+svg text { font-family: var(--font-hand); fill: var(--d-ink); }
+svg .t-big { font-size: 19px; font-weight: 700; }
+svg .t-mid { font-size: 16px; }
+svg .t-small { font-size: 14px; }
+svg .t-mono { font-family: var(--font-mono); font-size: 13px; }
+svg .t-red { fill: var(--d-red); } svg .t-green { fill: var(--d-greenink); }
+svg .s-red { stroke: var(--d-red); } svg .s-green { stroke: var(--d-greenink); }
+svg .rough { filter: url(#rough); }
+
+/* Pattern cards (self-joins) */
+.patterns { display: grid; gap: 1.4rem; }
+.pattern { display: grid; gap: 0.8rem; }
+.pattern h3 { margin: 0.6rem 0 0; }
+
+/* Trap blocks */
+.trap { display: grid; gap: 0.9rem; padding-top: 0.6rem; }
+.trap h3 { margin: 0; display: flex; gap: 0.6rem; align-items: baseline; }
+.trap h3 .n { font-family: var(--font-hand); font-weight: 700; color: var(--accent); font-size: 1.1rem; flex: none; }
+.qa { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 0.8rem; font-size: 1.02rem; }
+.qa dt { font-family: var(--font-display); font-weight: 600; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; padding-top: 0.25rem; color: var(--muted); }
+.qa dd { margin: 0; min-width: 0; }
+
+/* Truth table */
+.tbl-wrap { overflow-x: auto; background: var(--card); border: 1.5px solid var(--rule); border-radius: 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 1rem; }
+th, td { text-align: left; padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th { font-family: var(--font-display); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.mono { font-family: var(--font-mono); font-size: 0.9rem; }
+.pill { font-family: var(--font-display); font-weight: 600; font-size: 0.8rem; border-radius: 999px; padding: 0.1rem 0.6rem; }
+.pill.yes { background: var(--good-soft); color: var(--good); }
+.pill.no { background: var(--bad-soft); color: var(--bad); }
+.pill.unk { background: var(--d-amber); color: var(--fg); }
+
+/* Cheat sheet */
+.cheats { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.9rem; }
+.cheat { background: var(--card); border: 1.5px solid var(--rule); border-radius: 14px; padding: 0.9rem 1rem; font-size: 1rem; line-height: 1.55; min-width: 0; }
+.cheat b { font-family: var(--font-display); display: block; font-size: 1rem; margin-bottom: 0.2rem; }
+
+footer { margin-top: 3rem; padding-top: 1.2rem; border-top: 1.5px dashed var(--rule); color: var(--muted); font-size: 0.95rem; }
+
+@media (max-width: 560px) {
+  body { font-size: 1.05rem; }
+  .qa { grid-template-columns: 1fr; }
+  .qa dt { padding-top: 0.4rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .toc a, .copy { transition: border-color 0.15s, color 0.15s; }
+}
+</style>
+</head>
+<body>
+
+<!-- shared hand-drawn filter -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M1,1 L9,5 L1,9" fill="none" stroke="context-stroke" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+</svg>
+
+<main>
+  <header class="hero">
+    <div class="eyebrow">SQL field notes · for data scientists &amp; engineers</div>
+    <h1>SQL Gotchas, <span class="squiggle">Illustrated</span></h1>
+    <p class="lede">Most SQL bugs don't throw errors. The query runs, the numbers look plausible, and some rows have quietly gone missing. These are the traps from my notes, each drawn out with its fix.</p>
+    <ul class="toc" aria-label="Sections">
+      <li><a href="#rows-vs-days">Rows vs days</a></li>
+      <li><a href="#self-joins">Self-joins</a></li>
+      <li><a href="#run-order">Run order</a></li>
+      <li><a href="#joins">Join traps</a></li>
+      <li><a href="#aggregates">Aggregates &amp; windows</a></li>
+      <li><a href="#nulls">NULL</a></li>
+      <li><a href="#strings-dates">Strings, dates, types</a></li>
+      <li><a href="#subqueries">Subqueries</a></li>
+      <li><a href="#performance">Performance</a></li>
+      <li><a href="#before">Before you write</a></li>
+      <li><a href="#postgres">Postgres tools</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+    </ul>
+  </header>
+
+  <!-- ============ ROWS VS DAYS ============ -->
+  <section id="rows-vs-days">
+    <div class="kicker">Window functions</div>
+    <h2>LEAD counts rows, not days</h2>
+    <p><code>LEAD(column, n)</code> returns the value from <em>n rows ahead</em>. It doesn't look at the dates. If every day has exactly one row, n rows and n days are the same thing. Once weekends, holidays or missing data leave gaps, they aren't.</p>
+
+    <figure class="diagram">
+      <div class="diagram-inner">
+        <svg viewBox="0 0 740 300" role="img" aria-label="Six sales rows dated Jan 1, 2, 3, 6, 8 and 9. LEAD with offset 3 from Jan 1 lands on Jan 6, five days later. A self-join on date plus 7 days from Jan 1 lands exactly on Jan 8.">
+          <g class="rough">
+            <rect class="box f-card" x="40"  y="120" width="100" height="60" rx="10"/>
+            <rect class="box f-card" x="152" y="120" width="100" height="60" rx="10"/>
+            <rect class="box f-card" x="264" y="120" width="100" height="60" rx="10"/>
+            <rect class="box f-amber" x="376" y="120" width="100" height="60" rx="10"/>
+            <rect class="box f-green" x="488" y="120" width="100" height="60" rx="10"/>
+            <rect class="box f-card" x="600" y="120" width="100" height="60" rx="10"/>
+            <path class="ink s-red" d="M90,118 C130,40 380,40 424,114" marker-end="url(#arrow)"/>
+            <path class="ink s-green" d="M90,182 C140,268 490,268 536,186" marker-end="url(#arrow)"/>
+          </g>
+          <text class="t-big" x="90"  y="148" text-anchor="middle">Jan 1</text><text class="t-small" x="90"  y="170" text-anchor="middle">$120</text>
+          <text class="t-big" x="202" y="148" text-anchor="middle">Jan 2</text><text class="t-small" x="202" y="170" text-anchor="middle">$95</text>
+          <text class="t-big" x="314" y="148" text-anchor="middle">Jan 3</text><text class="t-small" x="314" y="170" text-anchor="middle">$140</text>
+          <text class="t-big" x="426" y="148" text-anchor="middle">Jan 6</text><text class="t-small" x="426" y="170" text-anchor="middle">$80</text>
+          <text class="t-big" x="538" y="148" text-anchor="middle">Jan 8</text><text class="t-small" x="538" y="170" text-anchor="middle">$110</text>
+          <text class="t-big" x="650" y="148" text-anchor="middle">Jan 9</text><text class="t-small" x="650" y="170" text-anchor="middle">$60</text>
+          <text class="t-mid t-red" x="258" y="38" text-anchor="middle">LEAD(amount, 3) → 3 rows ahead</text>
+          <text class="t-small t-red" x="490" y="96">landed on Jan 6: +5 days, not +3</text>
+          <text class="t-mid t-green" x="314" y="290" text-anchor="middle">self-join: s2.sale_date = s1.sale_date + 7 days</text>
+          <text class="t-small t-green" x="596" y="222">exactly Jan 8 ✓</text>
+          <text class="t-small" x="40" y="108" fill-opacity="0.7">gaps: Jan 4, 5, 7 have no rows</text>
+        </svg>
+      </div>
+      <figcaption>Rows are positions. Dates are values. Gaps make them disagree.</figcaption>
+    </figure>
+
+    <p>To get the value exactly 7 calendar days later, join the table to itself on the date difference. Use a <code>LEFT JOIN</code>, so a day with no partner comes back as <code>NULL</code> and doesn't vanish.</p>
+
+    <figure class="code"><div class="code-inner">
+      <div class="code-head"><span class="tag bad">Trap</span><span class="label">7 rows ahead, whatever the dates</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT sale_date, amount,
+       LEAD(amount, 7) OVER (ORDER BY sale_date) AS amount_7_rows_later
+FROM sales;</code></pre>
+    </div></figure>
+
+    <figure class="code"><div class="code-inner">
+      <div class="code-head"><span class="tag good">Fix</span><span class="label">exactly 7 calendar days later</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT s1.sale_date, s1.amount,
+       s2.amount AS amount_7_days_later      -- NULL if that day has no row
+FROM sales s1
+LEFT JOIN sales s2
+  ON s2.sale_date = s1.sale_date + INTERVAL '7 days';</code></pre>
+    </div></figure>
+
+    <div class="callout"><span class="hand" aria-hidden="true">👉</span><p>Want to keep using <code>LEAD</code>? Fill the gaps first. Join to a <code>generate_series</code> calendar so every day has a row, and then <code>LEAD(amount, 7)</code> really does mean 7 days.</p></div>
+  </section>
+
+  <!-- ============ SELF-JOINS ============ -->
+  <section id="self-joins">
+    <div class="kicker">Joins</div>
+    <h2>Self-joins: one table, two aliases</h2>
+    <p>A self-join compares rows within one table. You give the table two aliases and treat them as two copies, for example <code>e1</code> as "the employee" and <code>e2</code> as "the manager". The <code>ON</code> clause defines how a row in one copy relates to a row in the other.</p>
+
+    <figure class="diagram">
+      <div class="diagram-inner">
+        <svg viewBox="0 0 740 320" role="img" aria-label="The employees table drawn twice. On the left, alias e1 with Asha, Ben, Chen and Dee and their manager ids. On the right, alias e2. Arrows go from Ben and Chen to Asha, and from Dee to Ben. Asha has a NULL manager and is kept by the LEFT JOIN.">
+          <text class="t-big" x="180" y="34" text-anchor="middle">employees AS e1</text>
+          <text class="t-small" x="180" y="54" text-anchor="middle" fill-opacity="0.75">"the employee"</text>
+          <text class="t-big" x="580" y="34" text-anchor="middle">employees AS e2</text>
+          <text class="t-small" x="580" y="54" text-anchor="middle" fill-opacity="0.75">"the manager"</text>
+          <g class="rough">
+            <rect class="box f-blue"  x="40"  y="70" width="280" height="36" rx="8"/>
+            <rect class="box f-card"  x="40"  y="106" width="280" height="144" rx="0"/>
+            <rect class="box f-purple" x="460" y="70" width="240" height="36" rx="8"/>
+            <rect class="box f-card"  x="460" y="106" width="240" height="144" rx="0"/>
+            <path class="ink" d="M40,142 H320 M40,178 H320 M40,214 H320"/>
+            <path class="ink" d="M460,142 H700 M460,178 H700 M460,214 H700"/>
+            <path class="ink" d="M320,160 C380,160 400,124 456,124" marker-end="url(#arrow)"/>
+            <path class="ink" d="M320,196 C390,196 400,128 456,128" marker-end="url(#arrow)"/>
+            <path class="ink" d="M320,232 C390,232 400,162 456,160" marker-end="url(#arrow)"/>
+          </g>
+          <text class="t-mono" x="56" y="93">id</text><text class="t-mono" x="110" y="93">name</text><text class="t-mono" x="210" y="93">manager_id</text>
+          <text class="t-mono" x="476" y="93">employee_id</text><text class="t-mono" x="600" y="93">name</text>
+          <text class="t-mid" x="58" y="130">1</text><text class="t-mid" x="110" y="130">Asha</text><text class="t-mid t-red" x="210" y="130">NULL</text>
+          <text class="t-mid" x="58" y="166">2</text><text class="t-mid" x="110" y="166">Ben</text><text class="t-mid" x="210" y="166">1</text>
+          <text class="t-mid" x="58" y="202">3</text><text class="t-mid" x="110" y="202">Chen</text><text class="t-mid" x="210" y="202">1</text>
+          <text class="t-mid" x="58" y="238">4</text><text class="t-mid" x="110" y="238">Dee</text><text class="t-mid" x="210" y="238">2</text>
+          <text class="t-mid" x="478" y="130">1</text><text class="t-mid" x="600" y="130">Asha</text>
+          <text class="t-mid" x="478" y="166">2</text><text class="t-mid" x="600" y="166">Ben</text>
+          <text class="t-mid" x="478" y="202">3</text><text class="t-mid" x="600" y="202">Chen</text>
+          <text class="t-mid" x="478" y="238">4</text><text class="t-mid" x="600" y="238">Dee</text>
+          <text class="t-mid" x="370" y="284" text-anchor="middle">ON e1.manager_id = e2.employee_id</text>
+          <text class="t-small t-red" x="370" y="306" text-anchor="middle">Asha has no manager. INNER JOIN drops her; LEFT JOIN keeps her with NULL.</text>
+        </svg>
+      </div>
+      <figcaption>Same table, two hats. The ON clause draws the arrows.</figcaption>
+    </figure>
+
+    <div class="patterns">
+      <div class="pattern">
+        <h3>Who reports to whom (and org charts)</h3>
+        <p>Look up each employee's manager in the same table. The <code>LEFT JOIN</code> keeps the person at the top, who has no manager.</p>
+        <figure class="code"><div class="code-inner">
+          <div class="code-head"><span class="tag good">Pattern</span><span class="label">employee → manager</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT e1.name AS employee, e2.name AS manager
+FROM employees e1
+LEFT JOIN employees e2 ON e1.manager_id = e2.employee_id;</code></pre>
+        </div></figure>
+        <p>Each self-join climbs one level of the hierarchy. For a chain of any depth, use <code>WITH RECURSIVE</code>.</p>
+      </div>
+
+      <div class="pattern">
+        <h3>Top item within a group</h3>
+        <p>Joining <code>p1.price &lt; p2.price</code> within a category lists every "cheaper than" pair. That's the comparison, but not yet the answer. To get the most expensive product per category, keep the products that have <em>no</em> pricier partner.</p>
+        <figure class="code"><div class="code-inner">
+          <div class="code-head"><span class="tag good">Pattern</span><span class="label">anti-join: nothing beats me</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT p1.product_id, p1.category, p1.price
+FROM products p1
+LEFT JOIN products p2
+  ON p2.category = p1.category
+ AND p2.price > p1.price
+WHERE p2.product_id IS NULL;   -- ties at the top are all kept</code></pre>
+        </div></figure>
+      </div>
+
+      <div class="pattern">
+        <h3>Pairs that share something</h3>
+        <p>To find students enrolled in the same course, compare the IDs with <code>&lt;</code> rather than <code>&lt;&gt;</code>. With <code>&lt;&gt;</code> you get every pair twice, as (A, B) and again as (B, A).</p>
+        <figure class="code"><div class="code-inner">
+          <div class="code-head"><span class="tag good">Pattern</span><span class="label">each pair once</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT s1.student_id, s2.student_id, s1.course_id
+FROM students s1
+JOIN students s2
+  ON s1.course_id = s2.course_id
+ AND s1.student_id &lt; s2.student_id;</code></pre>
+        </div></figure>
+      </div>
+
+      <div class="pattern">
+        <h3>Gap between consecutive rows</h3>
+        <p>The self-join <code>l2.log_id = l1.log_id + 1</code> assumes the IDs have no gaps. Deleted or rolled-back rows break that assumption. <code>LAG</code> uses the actual order of the rows and is simpler to read.</p>
+        <figure class="code"><div class="code-inner">
+          <div class="code-head"><span class="tag good">Fix</span><span class="label">time since the previous entry</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT log_id, logged_at,
+       logged_at - LAG(logged_at) OVER (ORDER BY logged_at) AS time_diff
+FROM log;</code></pre>
+        </div></figure>
+      </div>
+
+      <div class="pattern">
+        <h3>Rolling windows by date</h3>
+        <p>For a 7-day moving average, match each day with itself and the 6 days before it. In my original note the range pointed forward in time, so this version flips it.</p>
+        <figure class="code"><div class="code-inner">
+          <div class="code-head"><span class="tag good">Pattern</span><span class="label">trailing 7-day average (one row per day)</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT s1.sale_date, s1.amount, AVG(s2.amount) AS avg_7d
+FROM sales s1
+JOIN sales s2
+  ON s2.sale_date BETWEEN s1.sale_date - INTERVAL '6 days' AND s1.sale_date
+GROUP BY s1.sale_date, s1.amount;
+
+-- Postgres 11+: same result, no self-join
+SELECT sale_date, amount,
+       AVG(amount) OVER (ORDER BY sale_date
+         RANGE BETWEEN INTERVAL '6 days' PRECEDING AND CURRENT ROW) AS avg_7d
+FROM sales;</code></pre>
+        </div></figure>
+      </div>
+
+      <div class="pattern">
+        <h3>Duplicate rows</h3>
+        <p>The condition <code>signup_date &lt;&gt; signup_date</code> misses duplicates that signed up on the same day, and it reports every pair twice. Compare a unique key instead. If you only need to know which emails are duplicated, <code>GROUP BY</code> is simpler.</p>
+        <figure class="code"><div class="code-inner">
+          <div class="code-head"><span class="tag good">Fix</span><span class="label">find duplicate emails</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT u1.email, u1.user_id, u2.user_id AS duplicate_id
+FROM users u1
+JOIN users u2
+  ON u1.email = u2.email
+ AND u1.user_id &lt; u2.user_id;
+
+-- or just the emails
+SELECT email, COUNT(*) AS copies
+FROM users
+GROUP BY email
+HAVING COUNT(*) > 1;</code></pre>
+        </div></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RUN ORDER ============ -->
+  <section id="run-order">
+    <div class="kicker">The mental model</div>
+    <h2>The order SQL actually runs in</h2>
+    <p>You write <code>SELECT</code> first, but the database evaluates it near the end. Many of the traps below have the same cause: <strong>a clause can only see what ran before it.</strong></p>
+
+    <figure class="diagram">
+      <div class="diagram-inner">
+        <svg viewBox="0 0 740 330" role="img" aria-label="Logical query order: FROM and JOIN, then WHERE, GROUP BY, HAVING, window functions, SELECT, DISTINCT, ORDER BY and LIMIT.">
+          <g class="rough">
+            <rect class="box f-blue"   x="30"  y="40" width="140" height="56" rx="12"/>
+            <rect class="box f-amber"  x="210" y="40" width="140" height="56" rx="12"/>
+            <rect class="box f-purple" x="390" y="40" width="140" height="56" rx="12"/>
+            <rect class="box f-amber"  x="570" y="40" width="140" height="56" rx="12"/>
+            <path class="ink" d="M172,68 H206" marker-end="url(#arrow)"/>
+            <path class="ink" d="M352,68 H386" marker-end="url(#arrow)"/>
+            <path class="ink" d="M532,68 H566" marker-end="url(#arrow)"/>
+            <path class="ink" d="M690,98 C700,140 680,170 660,192" marker-end="url(#arrow)"/>
+            <rect class="box f-purple" x="588" y="196" width="122" height="56" rx="12"/>
+            <rect class="box f-green"  x="440" y="196" width="112" height="56" rx="12"/>
+            <rect class="box f-card"   x="300" y="196" width="112" height="56" rx="12"/>
+            <rect class="box f-card"   x="160" y="196" width="112" height="56" rx="12"/>
+            <rect class="box f-card"   x="20"  y="196" width="112" height="56" rx="12"/>
+            <path class="ink" d="M586,224 H556" marker-end="url(#arrow)"/>
+            <path class="ink" d="M438,224 H416" marker-end="url(#arrow)"/>
+            <path class="ink" d="M298,224 H276" marker-end="url(#arrow)"/>
+            <path class="ink" d="M158,224 H136" marker-end="url(#arrow)"/>
+          </g>
+          <text class="t-big" x="100" y="74" text-anchor="middle">FROM / JOIN</text>
+          <text class="t-big" x="280" y="74" text-anchor="middle">WHERE</text>
+          <text class="t-big" x="460" y="74" text-anchor="middle">GROUP BY</text>
+          <text class="t-big" x="640" y="74" text-anchor="middle">HAVING</text>
+          <text class="t-small" x="100" y="120" text-anchor="middle">build the rows</text>
+          <text class="t-small" x="280" y="120" text-anchor="middle">filter rows</text>
+          <text class="t-small" x="280" y="138" text-anchor="middle" fill-opacity="0.75">no aggregates, no aliases</text>
+          <text class="t-small" x="460" y="120" text-anchor="middle">collapse into groups</text>
+          <text class="t-small" x="600" y="120" text-anchor="middle">filter groups</text>
+          <text class="t-big" x="649" y="230" text-anchor="middle">WINDOW</text>
+          <text class="t-big" x="496" y="230" text-anchor="middle">SELECT</text>
+          <text class="t-big" x="356" y="230" text-anchor="middle">DISTINCT</text>
+          <text class="t-big" x="216" y="230" text-anchor="middle">ORDER BY</text>
+          <text class="t-big" x="76"  y="230" text-anchor="middle">LIMIT</text>
+          <text class="t-small" x="649" y="276" text-anchor="middle">ROW_NUMBER,</text>
+          <text class="t-small" x="649" y="294" text-anchor="middle">SUM() OVER</text>
+          <text class="t-small" x="496" y="276" text-anchor="middle">aliases are</text>
+          <text class="t-small" x="496" y="294" text-anchor="middle">born here</text>
+          <text class="t-small" x="356" y="276" text-anchor="middle">dedupe output</text>
+          <text class="t-small" x="216" y="276" text-anchor="middle">can use aliases</text>
+          <text class="t-small" x="76"  y="276" text-anchor="middle">cut to N rows</text>
+          <text class="t-small t-red" x="370" y="322" text-anchor="middle">WHERE runs before SELECT, so it can't see aliases, aggregates or window results.</text>
+        </svg>
+      </div>
+      <figcaption>Read the arrows, not the order you typed the clauses.</figcaption>
+    </figure>
+
+    <div class="callout"><span class="hand" aria-hidden="true">👉</span><p>This is the <em>logical</em> order. The query planner can reorder the physical work, but the result always has to match this order. Keep it in mind and you won't have to memorize the WHERE/HAVING, alias and window-function rules below.</p></div>
+  </section>
+
+  <!-- ============ JOINS ============ -->
+  <section id="joins">
+    <div class="kicker">Where rows go missing</div>
+    <h2>Join traps</h2>
+
+    <div class="trap">
+      <h3><span class="n">J1</span>INNER JOIN drops what didn't match</h3>
+      <dl class="qa"><dt>Ask</dt><dd>List all products and their total sales, including products with zero sales.</dd>
+      <dt>Trap</dt><dd><code>INNER JOIN</code> keeps only products that have sales, so the zero-sales products disappear.</dd></dl>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">LEFT JOIN + COALESCE</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT p.product_id, COALESCE(SUM(s.sales_amount), 0) AS total_sales
+FROM products p
+LEFT JOIN sales s ON p.product_id = s.product_id
+GROUP BY p.product_id;</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">J2</span>A WHERE filter quietly turns a LEFT JOIN into an INNER JOIN</h3>
+      <p>This is the most common one. Unmatched rows come out of a <code>LEFT JOIN</code> with <code>NULL</code> in every right-table column. A <code>WHERE</code> condition on one of those columns evaluates to <em>unknown</em> for those rows, so they get dropped.</p>
+
+      <figure class="diagram">
+        <div class="diagram-inner">
+          <svg viewBox="0 0 740 300" role="img" aria-label="Left panel, filter in ON: customers A, B and C all stay, and B and C get NULL orders. Right panel, filter in WHERE: B and C are crossed out, leaving only A.">
+            <text class="t-big t-green" x="185" y="32" text-anchor="middle">filter in ON ✓</text>
+            <text class="t-big t-red" x="555" y="32" text-anchor="middle">filter in WHERE ✗</text>
+            <g class="rough">
+              <rect class="box f-green" x="30"  y="50" width="310" height="34" rx="8"/>
+              <rect class="box f-card"  x="30"  y="84" width="310" height="108"/>
+              <path class="ink" d="M30,120 H340 M30,156 H340"/>
+              <rect class="box f-amber" x="400" y="50" width="310" height="34" rx="8"/>
+              <rect class="box f-card"  x="400" y="84" width="310" height="108"/>
+              <path class="ink" d="M400,120 H710 M400,156 H710"/>
+              <path class="ink s-red" d="M410,138 H700 M410,174 H700" stroke-width="3"/>
+              <path class="ink" d="M370,30 V270" stroke-dasharray="4 8"/>
+            </g>
+            <text class="t-mono" x="46" y="72">customer</text><text class="t-mono" x="180" y="72">order_date</text>
+            <text class="t-mono" x="416" y="72">customer</text><text class="t-mono" x="550" y="72">order_date</text>
+            <text class="t-mid" x="48" y="108">A</text><text class="t-mid" x="180" y="108">2024-03-02</text>
+            <text class="t-mid" x="48" y="144">B</text><text class="t-mid t-red" x="180" y="144">NULL</text>
+            <text class="t-mid" x="48" y="180">C</text><text class="t-mid t-red" x="180" y="180">NULL</text>
+            <text class="t-mid" x="418" y="108">A</text><text class="t-mid" x="550" y="108">2024-03-02</text>
+            <text class="t-mid" x="418" y="144">B</text><text class="t-mid" x="550" y="144">2023-11-19</text>
+            <text class="t-mid" x="418" y="180">C</text><text class="t-mid t-red" x="550" y="180">NULL</text>
+            <text class="t-small" x="185" y="222" text-anchor="middle">B's 2023 order fails the join condition,</text>
+            <text class="t-small" x="185" y="242" text-anchor="middle">but B itself stays (with NULL)</text>
+            <text class="t-mid t-green" x="185" y="272" text-anchor="middle">3 customers in → 3 rows out</text>
+            <text class="t-small" x="555" y="222" text-anchor="middle">B: 2023 fails the filter. C: NULL ≥ date</text>
+            <text class="t-small" x="555" y="242" text-anchor="middle">is UNKNOWN, so WHERE drops it too</text>
+            <text class="t-mid t-red" x="555" y="272" text-anchor="middle">3 customers in → 1 row out</text>
+          </svg>
+        </div>
+        <figcaption>"All customers, plus their 2024 orders": where the date filter goes decides who survives.</figcaption>
+      </figure>
+
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag bad">Trap</span><span class="label">customers with no 2024 orders vanish</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT c.customer_id, o.order_id
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.order_date >= '2024-01-01' AND o.order_date &lt; '2025-01-01';</code></pre>
+      </div></figure>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">move the right-table filter into ON</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT c.customer_id, o.order_id
+FROM customers c
+LEFT JOIN orders o
+  ON c.customer_id = o.customer_id
+ AND o.order_date >= '2024-01-01'
+ AND o.order_date &lt; '2025-01-01';</code></pre>
+      </div></figure>
+
+      <p>The same idea with aggregates: count each employee's Q3 queries and include employees who ran none.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">every employee shows up, with 0 instead of NULL</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT e.employee_id,
+       COUNT(q.query_id) AS q_count,
+       COALESCE(MAX(q.query_starttime)::text, 'No queries') AS last_query
+FROM employees e
+LEFT JOIN queries q
+  ON e.employee_id = q.employee_id
+ AND q.query_starttime >= '2023-07-01'   -- filter in ON
+GROUP BY e.employee_id;
+
+-- Wrong: moving the filter to WHERE drops the employees with no queries
+-- WHERE q.query_starttime >= '2023-07-01'</code></pre>
+      </div></figure>
+      <div class="callout"><span class="hand" aria-hidden="true">👉</span><p><code>MAX</code> needs <code>COALESCE</code> because it returns <code>NULL</code> when an employee has no matching rows. <code>COUNT(column)</code> already returns 0 for that case, so it doesn't need it. Filters on the <em>left</em> table still belong in <code>WHERE</code>. The rule applies only to the right side.</p></div>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">J3</span>"Never did X" needs an anti-join</h3>
+      <dl class="qa"><dt>Ask</dt><dd>Find customers who have never placed an order.</dd>
+      <dt>Trap</dt><dd>A plain <code>JOIN</code> returns only customers who <em>do</em> have orders. You need to keep the unmatched rows and then select those.</dd></dl>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">two equivalent anti-joins</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT c.customer_id
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.order_id IS NULL;      -- here a WHERE on the right table is the point
+
+SELECT c.customer_id
+FROM customers c
+WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id);</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">J4</span>Join conditions hiding in WHERE</h3>
+      <p>With comma joins (<code>FROM orders, customers WHERE ...</code>), the join logic sits among the filters. Forget one condition when you add a third table and you get a Cartesian product. Explicit <code>JOIN ... ON</code> keeps each relationship next to the table it belongs to.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">explicit join syntax</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT o.order_id, c.customer_name
+FROM orders o
+JOIN customers c ON o.customer_id = c.customer_id;</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">J5</span>SELECT * and join fan-out</h3>
+      <dl class="qa"><dt>Ask</dt><dd>Names of customers who placed an order.</dd>
+      <dt>Trap</dt><dd><code>SELECT *</code> pulls every column from both tables, and same-named columns become ambiguous. The bigger problem is fan-out: a customer with 12 orders comes back 12 times.</dd></dl>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">only the columns you need, one row per customer</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT c.customer_id, c.name
+FROM customers c
+WHERE EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id);</code></pre>
+      </div></figure>
+    </div>
+  </section>
+
+  <!-- ============ AGGREGATES ============ -->
+  <section id="aggregates">
+    <div class="kicker">GROUP BY, HAVING, OVER</div>
+    <h2>Aggregates &amp; windows</h2>
+
+    <div class="trap">
+      <h3><span class="n">A1</span>WHERE can't filter on an aggregate</h3>
+      <p><code>WHERE</code> runs before <code>GROUP BY</code>, so <code>SUM(...)</code> doesn't exist yet at that point. Use <code>HAVING</code> to filter groups.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag bad">Trap</span><span class="label">error</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT product_id, SUM(sales_amount) AS total_sales
+FROM sales
+WHERE SUM(sales_amount) > 10000      -- aggregates not allowed in WHERE
+GROUP BY product_id;</code></pre>
+      </div></figure>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">HAVING filters groups</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT product_id, SUM(sales_amount) AS total_sales
+FROM sales
+GROUP BY product_id
+HAVING SUM(sales_amount) > 10000;</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">A2</span>Grouping by one column too many</h3>
+      <p>For "total sales per product", adding <code>sale_date</code> to <code>GROUP BY</code> gives you one row per product <em>per day</em>. Group by exactly the grain the question asks for, and aggregate everything else.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">one row per product</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT product_id, SUM(sales_amount) AS total_sales
+FROM sales
+GROUP BY product_id;</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">A3</span>Filtering on a SELECT alias</h3>
+      <p>Aliases are created in <code>SELECT</code>, which runs after <code>WHERE</code>. Postgres, MySQL and SQL Server reject the query below. Repeat the expression, or compute it in a CTE first. <code>HAVING</code> is the wrong tool here because nothing is being aggregated.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag bad">Trap</span><span class="label">column "discounted_price" does not exist</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT product_id, price, price * 0.9 AS discounted_price
+FROM products
+WHERE discounted_price > 100;</code></pre>
+      </div></figure>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">repeat it, or name it in a CTE</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT product_id, price, price * 0.9 AS discounted_price
+FROM products
+WHERE price * 0.9 > 100;
+
+WITH discounted AS (
+  SELECT product_id, price, price * 0.9 AS discounted_price
+  FROM products
+)
+SELECT * FROM discounted WHERE discounted_price > 100;</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">A4</span>Filtering on a window function</h3>
+      <dl class="qa"><dt>Ask</dt><dd>The latest purchase per customer.</dd>
+      <dt>Trap</dt><dd><code>WHERE rn = 1</code> in the same query fails, because window functions run after <code>WHERE</code>.</dd></dl>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">rank in a CTE, filter outside</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">WITH ranked_purchases AS (
+  SELECT customer_id, purchase_date,
+         ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY purchase_date DESC) AS rn
+  FROM purchases
+)
+SELECT customer_id, purchase_date
+FROM ranked_purchases
+WHERE rn = 1;</code></pre>
+      </div></figure>
+      <div class="callout"><span class="hand" aria-hidden="true">👉</span><p>Snowflake, BigQuery and DuckDB support <code>QUALIFY rn = 1</code>, which filters on a window result without the CTE.</p></div>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">A5</span>Top N per group: pick your tie rule</h3>
+      <p>A correlated subquery for "top 3 products per category" is slow and hard to read. Rank inside a CTE instead. Choose the ranking function on purpose: <code>ROW_NUMBER</code> breaks ties arbitrarily, <code>RANK</code> keeps ties and skips numbers after them, and <code>DENSE_RANK</code> keeps ties without skipping.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">top 3 per category</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">WITH product_sales AS (
+  SELECT product_id, category_id, sales_amount,
+         ROW_NUMBER() OVER (PARTITION BY category_id ORDER BY sales_amount DESC) AS rn
+  FROM sales
+)
+SELECT product_id, category_id, sales_amount
+FROM product_sales
+WHERE rn &lt;= 3;</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">A6</span>LIMIT without ORDER BY</h3>
+      <p>A table has no inherent order. "Top 5" with <code>LIMIT 5</code> and no <code>ORDER BY</code> gives you 5 arbitrary rows, and they can change between runs.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">top 5 highest-grossing products</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT product_id, SUM(sales_amount) AS total_sales
+FROM sales
+GROUP BY product_id
+ORDER BY total_sales DESC
+LIMIT 5;</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">A7</span>Running totals: use a window, not a subquery</h3>
+      <p>Window functions compute across rows without collapsing them. That makes them a good fit for running totals, rankings and comparisons with a group average.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">cumulative spend per customer</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT customer_id, order_date, order_amount,
+       SUM(order_amount) OVER (
+         PARTITION BY customer_id ORDER BY order_date
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) AS cumulative_spending
+FROM orders;</code></pre>
+      </div></figure>
+      <div class="callout"><span class="hand" aria-hidden="true">👉</span><p>Without an explicit frame, the default is <code>RANGE</code>. Two orders on the same date then both get the total <em>including each other</em>. Write <code>ROWS</code> when you want a strict row-by-row running total.</p></div>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">A8</span>Correlated subqueries and nesting</h3>
+      <dl class="qa"><dt>Ask</dt><dd>Employees paid more than their department's average.</dd>
+      <dt>Trap</dt><dd>A correlated subquery in <code>WHERE</code> can re-run the average once per employee, and nested subqueries quickly become unreadable.</dd></dl>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag bad">Trap</span><span class="label">re-evaluated per row</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT employee_id, salary
+FROM employees e1
+WHERE salary > (SELECT AVG(salary) FROM employees e2
+                WHERE e1.department_id = e2.department_id);</code></pre>
+      </div></figure>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">compute once with a window, then filter</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">WITH with_avg AS (
+  SELECT employee_id, salary,
+         AVG(salary) OVER (PARTITION BY department_id) AS dept_avg
+  FROM employees
+)
+SELECT employee_id, salary
+FROM with_avg
+WHERE salary > dept_avg;</code></pre>
+      </div></figure>
+      <p>The same CTE-first approach handles "the customer with the highest total in each region". Aggregate in one CTE, rank in a second, and filter at the end. Each step can be checked on its own.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">top customer per region, in readable steps</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">WITH customer_totals AS (
+  SELECT customer_id, region, SUM(order_amount) AS total
+  FROM orders
+  GROUP BY customer_id, region
+),
+ranked AS (
+  SELECT *, RANK() OVER (PARTITION BY region ORDER BY total DESC) AS rnk
+  FROM customer_totals
+)
+SELECT customer_id, region, total
+FROM ranked
+WHERE rnk = 1;</code></pre>
+      </div></figure>
+    </div>
+  </section>
+
+  <!-- ============ NULLS ============ -->
+  <section id="nulls">
+    <div class="kicker">Three-valued logic</div>
+    <h2>NULL isn't a value, it's "unknown"</h2>
+    <p>Any comparison with <code>NULL</code> returns UNKNOWN, not TRUE or FALSE. <code>WHERE</code> keeps only rows where the condition is TRUE, so rows with NULLs drop out without any warning.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>manager_id</th><th><code>manager_id != 123</code></th><th>Kept by WHERE?</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">123</td><td>FALSE</td><td><span class="pill no">dropped</span></td></tr>
+          <tr><td class="mono">77</td><td>TRUE</td><td><span class="pill yes">kept</span></td></tr>
+          <tr><td class="mono">NULL</td><td>UNKNOWN</td><td><span class="pill unk">dropped (surprise)</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">N1</span>!= silently excludes NULLs</h3>
+      <dl class="qa"><dt>Ask</dt><dd>Employees whose manager isn't 123, including employees with no manager.</dd></dl>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">say what you want for NULL</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT employee_id, manager_id
+FROM employees
+WHERE manager_id != 123 OR manager_id IS NULL;
+
+-- Postgres shorthand: NULL-safe comparison
+WHERE manager_id IS DISTINCT FROM 123;</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">N2</span>NOT IN with a NULL returns nothing</h3>
+      <p>If the subquery returns even one <code>NULL</code>, <code>x NOT IN (...)</code> is never TRUE for any row, and you get an empty result. <code>NOT EXISTS</code> doesn't have this problem.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag bad">Trap</span><span class="label">empty if blocked.customer_id has a NULL</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT customer_id FROM customers
+WHERE customer_id NOT IN (SELECT customer_id FROM blocked);</code></pre>
+      </div></figure>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">NULL-safe</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT c.customer_id FROM customers c
+WHERE NOT EXISTS (SELECT 1 FROM blocked b WHERE b.customer_id = c.customer_id);</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">N3</span>Aggregates skip NULLs</h3>
+      <p><code>AVG</code>, <code>SUM</code>, <code>MAX</code> and <code>COUNT(column)</code> all ignore NULLs, while <code>COUNT(*)</code> counts every row. If "no rating" should count as zero, say so explicitly. Treating missing as zero changes what the number means, so make that choice on purpose.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag note">Choose</span><span class="label">two different questions</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT product_id,
+       AVG(rating)              AS avg_of_rated,      -- ignores unrated
+       AVG(COALESCE(rating, 0)) AS avg_unrated_as_0   -- counts unrated as 0
+FROM product_ratings
+GROUP BY product_id;</code></pre>
+      </div></figure>
+    </div>
+  </section>
+
+  <!-- ============ STRINGS / DATES ============ -->
+  <section id="strings-dates">
+    <div class="kicker">Matching</div>
+    <h2>Strings, dates &amp; types</h2>
+
+    <div class="trap">
+      <h3><span class="n">S1</span>Case sensitivity depends on the database</h3>
+      <p>Postgres compares strings case-sensitively, while MySQL's default collations don't. If you need a case-insensitive match, normalize <em>both</em> sides of the comparison.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">matches John, JOHN, john</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT user_id, first_name
+FROM users
+WHERE LOWER(first_name) = 'john';      -- Postgres also has ILIKE 'john'</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">S2</span>= doesn't understand wildcards</h3>
+      <p><code>name = 'John%'</code> looks for a name that is literally "John%". Wildcards only work with <code>LIKE</code>: <code>%</code> matches any run of characters and <code>_</code> matches exactly one.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">names starting with John</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT customer_id, name
+FROM customers
+WHERE name LIKE 'John%';</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">S3</span>Implicit type conversion</h3>
+      <p>If <code>order_amount</code> is stored as text, <code>order_amount > 100</code> may compare it as a string (so '9' > '100') or fail, depending on the database. Cast explicitly. Better still, fix the column type.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">compare numbers as numbers</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT order_id, order_amount
+FROM orders
+WHERE CAST(order_amount AS DECIMAL) > 100;</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">S4</span>Timestamps aren't dates, and BETWEEN includes both ends</h3>
+      <p><code>order_date = '2024-01-01'</code> on a timestamp column matches only midnight exactly. <code>BETWEEN '2024-01-01' AND '2024-01-31'</code> includes both ends, but on a timestamp the end is <em>midnight</em> on Jan 31, so almost the whole last day is left out. Use a half-open range: start inclusive, end exclusive.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag bad">Trap</span><span class="label">two ways to lose rows</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">WHERE order_date = '2024-01-01'                          -- misses 09:15, 14:02, ...
+WHERE order_date BETWEEN '2024-01-01' AND '2024-01-31'   -- misses Jan 31 after 00:00</code></pre>
+      </div></figure>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">half-open ranges (and index-friendly)</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">-- all of Jan 1
+WHERE order_date >= '2024-01-01' AND order_date &lt; '2024-01-02'
+
+-- all of January
+WHERE order_date >= '2024-01-01' AND order_date &lt; '2024-02-01'</code></pre>
+      </div></figure>
+      <div class="callout"><span class="hand" aria-hidden="true">👉</span><p><code>WHERE DATE(order_date) = '2024-01-01'</code> gives the right answer, but wrapping the column in a function stops the database from using an index on it (see P2). The range version gives the same result and can use the index.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ SUBQUERIES ============ -->
+  <section id="subqueries">
+    <div class="kicker">IN, EXISTS, OR</div>
+    <h2>Subqueries</h2>
+
+    <div class="trap">
+      <h3><span class="n">Q1</span>= with a subquery that returns many rows</h3>
+      <p><code>=</code> expects a single value. The query works today with one active department and fails once there are two. If more than one row is possible, use <code>IN</code>.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">employees in departments that are hiring</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT employee_id
+FROM employees
+WHERE department_id IN (
+  SELECT department_id FROM departments WHERE hiring_status = 'active'
+);</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">Q2</span>Long OR chains</h3>
+      <p><code>state = 'CA' OR state = 'NY' OR ...</code> is hard to read, and it's easy to get wrong once you mix in <code>AND</code> without parentheses. <code>IN</code> says the same thing in one place.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">one list</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT customer_id, state
+FROM customers
+WHERE state IN ('CA', 'NY', 'TX', 'FL');</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">Q3</span>IN vs EXISTS</h3>
+      <p>Use <code>IN</code> to compare against a list of values, and <code>EXISTS</code> to ask whether a related row exists. <code>EXISTS</code> can stop at the first match. Modern planners usually rewrite both into the same semi-join, so the speed difference is often small. The difference that matters is <code>NOT IN</code> vs <code>NOT EXISTS</code> when NULLs are involved (see N2).</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">customers who have placed an order</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT c.customer_id, c.name
+FROM customers c
+WHERE EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id);</code></pre>
+      </div></figure>
+    </div>
+  </section>
+
+  <!-- ============ PERFORMANCE ============ -->
+  <section id="performance">
+    <div class="kicker">Make it fast</div>
+    <h2>Performance</h2>
+
+    <div class="trap">
+      <h3><span class="n">P1</span>Index what you filter and join on</h3>
+      <p>Columns that appear in <code>WHERE</code>, <code>JOIN ... ON</code> and <code>ORDER BY</code> on large tables are good candidates for an index. If "orders for product X" runs constantly, index <code>product_id</code>.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">support a frequent filter</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">CREATE INDEX idx_orders_product_id ON orders (product_id);
+
+SELECT order_id, customer_id
+FROM orders
+WHERE product_id = 123;</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">P2</span>Non-sargable conditions block the index</h3>
+      <p>A condition is <em>sargable</em> (Search ARGument ABLE) if the database can answer it with an index seek. Wrapping the column in a function or arithmetic, or starting a <code>LIKE</code> pattern with a wildcard, forces it to check every row.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag bad">Trap</span><span class="label">full scans</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">WHERE DATE(order_date) = '2024-01-01'
+WHERE amount + 0 > 100
+WHERE LOWER(email) = 'a@b.com'
+WHERE name LIKE '%son'</code></pre>
+      </div></figure>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">leave the column bare, or index the expression</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">WHERE order_date >= '2024-01-01' AND order_date &lt; '2024-01-02'
+WHERE amount > 100
+CREATE INDEX idx_users_email_lower ON users (LOWER(email));   -- now LOWER(email) = ... can seek</code></pre>
+      </div></figure>
+    </div>
+
+    <div class="trap">
+      <h3><span class="n">P3</span>DISTINCT as a band-aid</h3>
+      <p>Unexpected duplicates almost always come from a join fanning out: one customer, many orders. Adding <code>DISTINCT</code> hides the symptom and makes the database sort or hash every row. Fix the join instead. When the question really asks for unique values, as in "which products have at least one sale", <code>DISTINCT</code> is the right tool.</p>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag bad">Trap</span><span class="label">join every order, then dedupe</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT DISTINCT c.city
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.order_date >= '2024-01-01';</code></pre>
+      </div></figure>
+      <figure class="code"><div class="code-inner">
+        <div class="code-head"><span class="tag good">Fix</span><span class="label">ask "does an order exist?"</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT DISTINCT c.city
+FROM customers c
+WHERE EXISTS (
+  SELECT 1 FROM orders o
+  WHERE o.customer_id = c.customer_id AND o.order_date >= '2024-01-01'
+);</code></pre>
+      </div></figure>
+      <p>Likewise, use <code>GROUP BY</code> when you need counts. To count orders per city, <code>GROUP BY city</code> with <code>COUNT(*)</code> does it in one pass.</p>
+    </div>
+  </section>
+
+  <!-- ============ BEFORE ============ -->
+  <section id="before">
+    <div class="kicker">Interview mode</div>
+    <h2>Before you write a line</h2>
+    <p>Many wrong answers come from misreading the question, not from bad SQL. Spend 30 seconds on these before you start typing.</p>
+    <ul class="plain">
+      <li><strong>Pin down the grain.</strong> Is the output one row per customer, per order, or per day? That decides <code>GROUP BY</code>.</li>
+      <li><strong>Clarify "never" and "all".</strong> Does "customers who never purchased" mean ever, or in a given period? Does "all products" include ones with zero sales? These questions decide between <code>INNER</code> and <code>LEFT</code> joins.</li>
+      <li><strong>Ask about ties.</strong> For "top 3" with a tie for third place, do you want 3 rows or 4? That decides <code>ROW_NUMBER</code> vs <code>RANK</code>.</li>
+      <li><strong>Test the edges in your head:</strong> empty tables, a single row, NULLs, duplicates, and every value the same.</li>
+      <li><strong>Check the order.</strong> If the output order matters, write <code>ORDER BY</code>.</li>
+    </ul>
+    <figure class="code"><div class="code-inner">
+      <div class="code-head"><span class="tag good">Example</span><span class="label">customers with exactly one order</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT customer_id
+FROM orders
+GROUP BY customer_id
+HAVING COUNT(order_id) = 1;   -- customers with zero orders aren't in orders at all</code></pre>
+    </div></figure>
+  </section>
+
+  <!-- ============ POSTGRES ============ -->
+  <section id="postgres">
+    <div class="kicker">Small but handy</div>
+    <h2>Postgres pocket tools</h2>
+
+    <h3>SPLIT_PART(string, delimiter, field)</h3>
+    <p>Splits a string on a delimiter and returns one piece. <code>field</code> starts at 1. Since Postgres 14, a negative field counts from the end.</p>
+    <figure class="code"><div class="code-inner">
+      <div class="code-head"><span class="tag note">Try</span><span class="label">first and last name</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT SPLIT_PART(employee_name, ' ', 1)  AS first_name,   -- 'Ada Lovelace' → 'Ada'
+       SPLIT_PART(employee_name, ' ', -1) AS last_name     -- → 'Lovelace' (PG 14+)
+FROM employees;</code></pre>
+    </div></figure>
+
+    <h3>array_length(array, dimension)</h3>
+    <p>Returns the length of an array along a given dimension. Watch out: an empty array returns <code>NULL</code>, not 0. Use <code>cardinality()</code> if you want 0.</p>
+    <figure class="code"><div class="code-inner">
+      <div class="code-head"><span class="tag note">Try</span><span class="label">counting elements</span><button class="copy" type="button">copy</button></div>
+<pre><code class="sql">SELECT array_length(ARRAY['apple', 'banana', 'grape'], 1) AS length;   -- 3
+SELECT array_length('{}'::text[], 1);                                  -- NULL
+SELECT cardinality('{}'::text[]);                                      -- 0</code></pre>
+    </div></figure>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section id="cheatsheet">
+    <div class="kicker">Screenshot this</div>
+    <h2>Cheat sheet</h2>
+    <div class="cheats">
+      <div class="cheat"><b>Rows ≠ days</b>LEAD/LAG count rows. For calendar offsets, join on the date or fill the gaps first.</div>
+      <div class="cheat"><b>LEFT JOIN filters go in ON</b>A right-table filter in WHERE turns the join into an INNER JOIN.</div>
+      <div class="cheat"><b>WHERE → rows, HAVING → groups</b>WHERE can't see aggregates, aliases or window results.</div>
+      <div class="cheat"><b>NULL is unknown</b>Use IS NULL, IS DISTINCT FROM, and NOT EXISTS rather than NOT IN.</div>
+      <div class="cheat"><b>COUNT gives 0, MAX gives NULL</b>Wrap SUM, MAX and AVG in COALESCE after a LEFT JOIN.</div>
+      <div class="cheat"><b>Half-open date ranges</b>Use &gt;= start AND &lt; next start. BETWEEN on timestamps loses the last day.</div>
+      <div class="cheat"><b>Keep columns bare</b>Functions on a filtered column block the index. Rewrite or index the expression.</div>
+      <div class="cheat"><b>Duplicates mean fan-out</b>Fix the join, often with EXISTS, before reaching for DISTINCT.</div>
+      <div class="cheat"><b>LIMIT needs ORDER BY</b>Otherwise "top N" is just N arbitrary rows.</div>
+      <div class="cheat"><b>Name the tie rule</b>ROW_NUMBER, RANK or DENSE_RANK? Decide before ranking.</div>
+      <div class="cheat"><b>CTEs for steps</b>Aggregate, then rank, then filter. Each step can be checked on its own.</div>
+      <div class="cheat"><b>Pick columns, not *</b>Clearer joins, less data, no ambiguous names.</div>
+    </div>
+  </section>
+
+  <footer>Built from my SQL notes doc. Examples use Postgres syntax unless noted.</footer>
+</main>
+
+<script>
+(function () {
+  var KW = new Set(("select from where join left right inner outer full cross on and or not in is null as group by order " +
+    "having limit with distinct case when then else end over partition rows range between preceding following current row " +
+    "interval exists union all asc desc create index like ilike recursive unbounded qualify true false").split(" "));
+  var TYPES = new Set("text decimal date int integer numeric".split(" "));
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function highlight(src) {
+    var re = /(--[^\n]*)|('(?:[^']|'')*')|(\b\d+(?:\.\d+)?\b)|([A-Za-z_][A-Za-z0-9_]*)|(::|[<>!=]=?|<>)|([\s\S])/g;
+    var out = "", m;
+    while ((m = re.exec(src))) {
+      if (m[1]) out += '<span class="tk-com">' + esc(m[1]) + "</span>";
+      else if (m[2]) out += '<span class="tk-str">' + esc(m[2]) + "</span>";
+      else if (m[3]) out += '<span class="tk-num">' + m[3] + "</span>";
+      else if (m[4]) {
+        var w = m[4], lw = w.toLowerCase();
+        var rest = src.slice(re.lastIndex).match(/^\s*\(/);
+        if (KW.has(lw) && !(rest && /^(left|right)$/.test(lw))) out += '<span class="tk-kw">' + w + "</span>";
+        else if (rest) out += '<span class="tk-fn">' + w + "</span>";
+        else if (TYPES.has(lw)) out += '<span class="tk-kw">' + w + "</span>";
+        else out += esc(w);
+      }
+      else if (m[5]) out += '<span class="tk-op">' + esc(m[5]) + "</span>";
+      else out += esc(m[6]);
+    }
+    return out;
+  }
+  document.querySelectorAll("pre code.sql").forEach(function (el) {
+    el.innerHTML = highlight(el.textContent);
+  });
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var code = btn.closest(".code-inner").querySelector("pre");
+      var text = code.textContent;
+      function selectIt() {
+        var r = document.createRange(); r.selectNodeContents(code);
+        var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+        btn.textContent = "selected";
+      }
+      try {
+        navigator.clipboard.writeText(text).then(function () { btn.textContent = "copied"; }, selectIt);
+      } catch (e) { selectIt(); }
+      setTimeout(function () { btn.textContent = "copy"; }, 1600);
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
